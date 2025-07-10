@@ -19,6 +19,7 @@ from scipy.optimize import minimize
 from collections import Counter
 from scipy import stats
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sentence_transformers import SentenceTransformer
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -199,11 +200,6 @@ def load_time_series(path) -> pd.DataFrame:
     else:
         raise ValueError(f"Ruta no válida: {path}")
 
-train_ts = load_time_series("series_train.parquet")
-test_ts = load_time_series("series_test.parquet")
-
-train_ts
-
 def feature_engineering(df):
 
     for col, (col_min, col_max) in min_max_dict.items():
@@ -235,23 +231,72 @@ train = pd.read_csv("train.csv")
 test = pd.read_csv("test.csv")
 sample = pd.read_csv("sample_submission.csv")
 
+train_ts = load_time_series("series_train.parquet")
+test_ts = load_time_series("series_test.parquet")
+
 train = pd.merge(train, train_ts, how="left", on='id')
 test = pd.merge(test, test_ts, how="left", on='id')
 
-
+# Normalización inicial
 numeric_cols = train[test.columns].select_dtypes(include='number').columns
 min_max_dict = {col: (train[col].min(), train[col].max()) for col in numeric_cols}
 
 train = feature_engineering(train)
 test = feature_engineering(test)
 
+
+llm_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Función robusta para convertir una fila en texto
+def create_llm_text(df, columns):
+    valid_cols = [col for col in columns if col in df.columns]
+    def row_to_text(row):
+        parts = []
+        for col in valid_cols:
+            try:
+                val = row[col]
+                if pd.notna(val):
+                    parts.append(f"{col}={str(val)}")
+            except KeyError:
+                continue
+        return ". ".join(parts)
+    return df.apply(row_to_text, axis=1)
+
+# Filtrar columnas que contengan preguntas relevantes Y existan en ambos conjuntos
+llm_columns = [col for col in train.columns if ("PCIAT" in col or "FGC" in col or "SDS" in col) and col in test.columns]
+
+# Crear texto desde las respuestas
+train["llm_text"] = create_llm_text(train, llm_columns)
+test["llm_text"] = create_llm_text(test, llm_columns)
+
+# Generar embeddings usando el LLM
+train_llm_embeddings = llm_model.encode(train["llm_text"].tolist(), show_progress_bar=True)
+test_llm_embeddings = llm_model.encode(test["llm_text"].tolist(), show_progress_bar=True)
+
+# Convertir embeddings en DataFrame
+train_llm_df = pd.DataFrame(train_llm_embeddings, columns=[f"llm_emb_{i}" for i in range(train_llm_embeddings.shape[1])])
+test_llm_df = pd.DataFrame(test_llm_embeddings, columns=[f"llm_emb_{i}" for i in range(test_llm_embeddings.shape[1])])
+
+# Agregar embeddings al dataset
+train = pd.concat([train.reset_index(drop=True), train_llm_df.reset_index(drop=True)], axis=1)
+test = pd.concat([test.reset_index(drop=True), test_llm_df.reset_index(drop=True)], axis=1)
+
+# Eliminar columnas no numéricas antes del modelado
+train = train.drop(columns=['llm_text'], errors='ignore')
+test = test.drop(columns=['llm_text'], errors='ignore')
+
+# Eliminar columnas innecesarias y preparar datos para entrenamiento
 train = train.drop('id', axis=1)
-test  = test .drop('id', axis=1)   
+test = test.drop('id', axis=1)
 
-train = train.dropna(subset='sii')
+# Asegurar que 'sii' no tenga valores nulos
+train = train.dropna(subset=['sii'])
 
+# Variables objetivo
 target = train['PCIAT-PCIAT_Total']
 sii_target = train['sii']
+
+# Igualar columnas de entrenamiento y prueba
 train = train[test.columns]
 
 def map_pciat_to_sii(pciat_values):
