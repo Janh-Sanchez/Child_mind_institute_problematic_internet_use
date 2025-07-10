@@ -48,7 +48,7 @@ pyarrow
 
 1. **Download the competition data** and place all files in the `data/` folder.
 
-   [<span style="font-size:4em;">📁</span>](https://www.kaggle.com/competitions/child-mind-institute-problematic-internet-use/data)
+   [📁](https://www.kaggle.com/competitions/child-mind-institute-problematic-internet-use/data)
 
    - You can download the data by clicking the folder above.
    - At the bottom of the page you will find the download links for all files.
