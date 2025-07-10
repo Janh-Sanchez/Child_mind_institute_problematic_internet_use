@@ -115,7 +115,7 @@ Where `sii` is the predicted class from 0 to 3.
 ## Contributors
 
 - **Jan Henrik Sánchez Jerez** – 20231020130  
-- **Juan David Castaño González** – 20231020131  
+- **Juan David Quiroga** – 20222020206 
 
 ---
 
