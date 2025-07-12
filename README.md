@@ -82,6 +82,11 @@ If enabled, the system uses `SentenceTransformer` (MiniLM) to create semantic em
 
 ---
 
+## Contributors
+
+- **Jan Henrik Sánchez Jerez** – 20231020130
+- **Juan David Quiroga** – 20222020206 
+
 ## References
 
 - [Competition Overview](https://www.kaggle.com/competitions/child-mind-institute-problematic-internet-use/overview)
