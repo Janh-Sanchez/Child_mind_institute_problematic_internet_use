@@ -41,7 +41,9 @@ pip install -r requirements.txt
    [<span style="font-size:2em;">📁</span>](https://www.kaggle.com/competitions/child-mind-institute-problematic-internet-use/data)
 
    At the bottom of the page you will find the download links for all files.
-2. **Run the pipeline**:
+
+   Make sure your data is in src folder for the implementation
+3. **Run the pipeline**:
 
    ```bash
    python main.py
